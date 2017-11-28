@@ -229,54 +229,67 @@ def commandQuery(parser):
     # Get the API token.
     apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
 
-    # Send the query to the server.
-    response, rawResponse = sendRequest(args, '/api/query', {
-      "token": apiToken,
-      "queryType": "log",
-      "filter": args.filter,
-      "startTime": args.start,
-      "endTime": args.end,
-      "maxCount": args.count,
-      "pageMode": args.mode,
-      "columns": columns,
-      "priority": args.priority
-    })
+    processed_pages = 0
+    continuation_token = None
 
-    # Print the log records.
-    matches = response['matches']
+    while processed_pages == 0 or continuation_token is not None:
 
-    if args.output == 'json':
-        print( to_utf8( rawResponse ) )
-    elif args.output == 'json-pretty':
-        print( to_utf8( json.dumps(response, ensure_ascii=args.no_escape_unicode, sort_keys=True, indent=2, separators=(',', ': ')) ) )
-    elif args.output == 'csv':
-        columnList = columns.split(',')
+        # Send the query to the server.
+        response, rawResponse = sendRequest(args, '/api/query', {
+          "token": apiToken,
+          "queryType": "log",
+          "filter": args.filter,
+          "startTime": args.start,
+          "endTime": args.end,
+          "maxCount": args.count,
+          "pageMode": args.mode,
+          "columns": columns,
+          "priority": args.priority,
+          "continuationToken": continuation_token
+        })
 
-        ar = []
-        for i in range(len(columnList)):
-            ar.append(columnList[i])
+        # Print the log records.
+        matches = response['matches']
 
-        csvBuffer = StringIO.StringIO()
-        csvWriter = csv.writer(csvBuffer, dialect='excel')
-        csvWriter.writerow(ar)
-        for i in range(len(matches)):
-            match = matches[i]
-            attributes = match.get('attributes')
+        if args.output == 'json':
+            print( to_utf8( rawResponse ) )
+        elif args.output == 'json-pretty':
+            print( to_utf8( json.dumps(response, ensure_ascii=args.no_escape_unicode, sort_keys=True, indent=2, separators=(',', ': ')) ) )
+        elif args.output == 'csv':
+            columnList = columns.split(',')
+
+            ar = []
             for i in range(len(columnList)):
-                column = columnList[i]
-                if column in match:
-                    ar[i] = to_utf8( match.get(column))
-                elif column in attributes:
-                    ar[i] = to_utf8( attributes.get(column) )
-                else:
-                    ar[i] = ''
-            csvWriter.writerow(ar)
+                ar.append(columnList[i])
 
-        print(csvBuffer.getvalue())
-    else:
-        # Readable text format (singleline or multiline)
-        for i in range(len(matches)):
-            printReadableRow(args.output, matches[i])
+            csvBuffer = StringIO.StringIO()
+            csvWriter = csv.writer(csvBuffer, dialect='excel')
+            csvWriter.writerow(ar)
+            for i in range(len(matches)):
+                match = matches[i]
+                attributes = match.get('attributes')
+                for i in range(len(columnList)):
+                    column = columnList[i]
+                    if column in match:
+                        ar[i] = to_utf8( match.get(column))
+                    elif column in attributes:
+                        ar[i] = to_utf8( attributes.get(column) )
+                    else:
+                        ar[i] = ''
+                csvWriter.writerow(ar)
+
+            print(csvBuffer.getvalue())
+        else:
+            # Readable text format (singleline or multiline)
+            for i in range(len(matches)):
+                printReadableRow(args.output, matches[i])
+
+        if 'continuationToken' in response:
+            continuation_token = response['continuationToken']
+        else:
+            continuation_token = None
+
+        processed_pages = processed_pages + 1
 
 
 def printReadableRow(output, match):
