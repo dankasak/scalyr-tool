@@ -262,9 +262,9 @@ def commandQuery(parser):
                 ar = []
                 for i in range(len(columnList)):
                     ar.append(columnList[i])
-                    csvBuffer = StringIO.StringIO()
-                    csvWriter = csv.writer(csvBuffer, dialect='excel')
-                    csvWriter.writerow(ar)
+                csvBuffer = StringIO.StringIO() # this will presumably take a LOT of memory, and was a bad choice - why not write to a file?
+                csvWriter = csv.writer(csvBuffer, dialect='excel')
+                csvWriter.writerow(ar)
 
             for i in range(len(matches)):
                 match = matches[i]
@@ -279,8 +279,6 @@ def commandQuery(parser):
                         ar[i] = ''
                 csvWriter.writerow(ar)
 
-            print(csvBuffer.getvalue())
-
         else:
             # Readable text format (singleline or multiline)
             for i in range(len(matches)):
@@ -292,6 +290,9 @@ def commandQuery(parser):
             continuation_token = None
 
         processed_pages = processed_pages + 1
+
+    if csvBuffer:
+        print(csvBuffer.getvalue())
 
 
 def printReadableRow(output, match):
