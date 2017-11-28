@@ -256,15 +256,16 @@ def commandQuery(parser):
         elif args.output == 'json-pretty':
             print( to_utf8( json.dumps(response, ensure_ascii=args.no_escape_unicode, sort_keys=True, indent=2, separators=(',', ': ')) ) )
         elif args.output == 'csv':
-            columnList = columns.split(',')
 
-            ar = []
-            for i in range(len(columnList)):
-                ar.append(columnList[i])
+            if processed_pages == 0:
+                columnList = columns.split(',')
+                ar = []
+                for i in range(len(columnList)):
+                    ar.append(columnList[i])
+                    csvBuffer = StringIO.StringIO()
+                    csvWriter = csv.writer(csvBuffer, dialect='excel')
+                    csvWriter.writerow(ar)
 
-            csvBuffer = StringIO.StringIO()
-            csvWriter = csv.writer(csvBuffer, dialect='excel')
-            csvWriter.writerow(ar)
             for i in range(len(matches)):
                 match = matches[i]
                 attributes = match.get('attributes')
@@ -279,6 +280,7 @@ def commandQuery(parser):
                 csvWriter.writerow(ar)
 
             print(csvBuffer.getvalue())
+
         else:
             # Readable text format (singleline or multiline)
             for i in range(len(matches)):
